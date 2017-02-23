@@ -1,2 +1,147 @@
-# WXApp-bugCollection
-小程序缺陷汇总，并研究一些解决办法，不定期更新。
+# 小程序缺陷汇总
+小程序现阶段缺陷还很多，在安卓手机上的性能也是很糟糕，估计实用性还不高。  
+一步一步都是坑，这里作为个人踩坑收集用（内含吐槽），也是经验分享，欢迎issues讨论。
+
+## 框架部分
+
+### 1、残念的数据绑定  
+要实现页面数据响应必须通过setData设定值，如果直接设定data里的值则无页面响应。  
+不能像其他MVVM框架那样自动响应，无语也无解。
+
+### 2、setData()无法进行动态数组操作  
+这也是由于js对象的key部分一定是字符串造成的。  
+setDate只支持对静态key的解析，无法传入参数实现动态遍历。
+#### 比如：
+有一个数组需要更改其中的值，循环传入i将无效的，只能是固定数字。
+```javascript
+for(var i=0; i<3; i++){
+  this.setData({
+      array[i]:‘hello’
+    }
+  })
+}
+```
+如果你照上面这么写的话就会报下面的错误。
+![动态数组设置报错](https://github.com/zwei76/WXApp-bugCollection/raw/master/img/1:1.png)
+官方的意思就是只能这样写：
+```javascript
+this.setData({
+    'array[1]':‘hello’
+  }
+})
+```
+#### 解决办法：
+不在遍历中使用setData，可以先遍历修改完后再用setData完整赋值完成响应。  
+因为js里数组是地址传递，也就是说实际上已经修改了原数组，用setData只是为了响应页面。
+
+### 3、路由设置必须有序  
+小程序的页面都必须在app.json注册，但这不是随便登记一下就行了，页面登记的顺序一定是有层级关系的。  
+如果你把首页放在了某二级页面后面，那就会报错，这个文档没写清楚真心坑爹。
+```
+"pages": [
+  "pages/index/index",   //一级页面
+  "pages/list/list",     //二级页面
+  "pages/detail/detail", //三级页面
+  "pages/msg/msg"        //额外页面
+],
+```
+#### 建议：
+设计时页面分级要明确，排列按顺序，额外页面（比如提示成功或失败的页面）放最后。
+
+### 4、wx.redirectTo(OBJECT)不可跳一级页  
+这个是关闭当前页跳转到指定页的功能，跳到一级页会导致导航栏消失，并且该一级页会被当成一次跳转。  
+小程序最多五层跳转，正常一级页不会算入，但如果一级页也被当成一次跳转，那使用几次后就不能动了，因为五次满了，***非常危险***。  
+这点在新的官方文档已经说明，并提供wx.switchTab(OBJECT)跳转到一级页面，不过由于wx.switchTab(OBJECT)不能传参，使用还是比较有限的。
+
+### 5、发起POST请求必须改默认参数  
+默认header['content-type'] 为 'application/json'，在get请求中没有问题。  
+但如果想要发起POST就必须将header['content-type'] 为 'application/x-www-form-urlencoded'，否则就收不到返回数据。
+```
+wx.request({
+  url: 'test.php', //仅为示例，并非真实的接口地址
+  data: yourData,
+  header: {
+      'content-type': 'application/x-www-form-urlencoded' //这里必须改
+      },
+  success: function(res) {
+    console.log(res.data)
+  }
+})
+```
+
+### 6、wx.setNavigationBarTitle(OBJECT)的调用时机  
+这个是改变页面标题的接口，必须在onShow触发时才调用。  
+如果在onLoad触发时调用，只会一闪而过，然后又变成页面配置json里的名字或全局配置json里的名字。  
+#### 建议：  
+小程序这样的设计体验不是很好，每次都会一闪而过的改名字，如果要避免这种情况就只能在配置json中设置了，不过这样是静态的。
+
+## 样式部分  
+
+### 1、不支持部分选择器  
+样式部分的缺陷是比较严重的，不支持相邻兄弟选择器，不支持级联选择器。。。  
+#### 解决办法：  
+这个暂时无解，只能说改变一下样式命名的习惯，使用横杠连接体现层次，虽然这样盒子多起来会变得很长。  
+如果使用预处理，比如我用SASS可以这样写，稍微省点力：
+```
+.list {
+  padding: 20rpx;
+  &-name {
+    color: red;
+    &-number {
+      color: blue;
+      &-info {
+        font-size: 16rpx;
+      }
+    }
+  }
+}
+// 编译结果
+.list {
+  padding: 20rpx;
+}
+.list-name {
+  color: red;
+}
+.list-name-number {
+  color: blue;
+}
+.list-name-number-info {
+  font-size: 16rpx;
+}
+```
+
+### 2、button无法正常改样式  
+使用button标签默认是无法更改样式，加上类名也会因为优先级问题不能覆盖原样式，搞不懂这样设计的用意，十分不便。  
+#### 解决办法：
+1. 可以通过!important提升优先级强行覆盖，不推荐，因为会影响其他默认样式；  
+2. 也可以仿照默认样式写法，进行覆盖，基本需要覆盖的样式如下（以primary为例，其他的以此类推），加上[plain]或[size=”min”]即是其他镂空版和缩小版的样式；  
+3. ***推荐做法***，尽量不破坏原有样式，可以自定义一个type，然后仿照默认样式的写法，就可以自定义button了；  
+4. 使用view仿照一个button，把默认的样式复制一份即可，会增加无意义的代码量，而且没有默认的交互事件(active)。  
+
+| 类名 | 触发时机 |
+| -----------------------  | -------- |
+| `button[type="primary"]` | 一般样式 |
+| `button[type="primary"].button-hover` | 按下（弹起）瞬间样式 |
+| `button[type="primary"]:not([disabled]):active` | 按下样式（可选，没有则使用上面的作为按下样式，[plain]默认有，需覆盖）|
+| `button[disabled][type=" primary"]` | 禁用样式 |
+按下操作触发顺序是：  
+```
+button[type="primary"] > button[type="primary"].button-hover > button[type="primary"][plain]:not([disabled]):active
+```
+
+### 3、button的默认边框  
+button的默认边框是使用after伪类，新建了一个2倍大小的空白content，设置了border，再缩小为0.5倍，刚好盖在元素上面，下面就是默认按钮的样式。  
+
+![默认button的样式](https://github.com/zwei76/WXApp-bugCollection/raw/master/img/2:1.png)  
+
+这是一种为了在不同设备实现1px的做法，但本身小程序就有rpx啊，还用这鸡肋的办法让人不解（笑）。  
+也给更改button样式一点阻碍，需要把after设置display:none才能去掉边框。  
+
+### 4、button不同设备上表现差异  
+1. 真机上会出现button内文字高度偏高的问题（安卓机，iOS未测），而模拟器上表现正常（居中），尝试覆盖默认样式进行修正（改为padding撑开盒子的方法代替原来的line-height），并没有效果。所以暂无解决办法；
+2. min按钮在真机上会出现左右边框消失的情况，暂无解决办法。
+
+### 5、rem在真机设备上的表现有差异  
+即使在根元素page上设置了字体大小，rem在不同设备上的表现还是无法统一。
+#### 建议：  
+使用rpx作为响应式字体的单位，效果比较好，rpx作为小程序的特性还是在不同设备的表现上还是很实用的。  
