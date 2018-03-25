@@ -124,5 +124,5 @@ let degrees = radians * 180 / Math.PI;
   [7]: https://github.com/nimokuri/H5Learning-animationDemo/blob/master/common/utils.js
   [8]: https://developer.mozilla.org/zh-CN/docs/Web/API/Window/requestAnimationFrame
   [9]: https://github.com/nimokuri/H5Learning-animationDemo/blob/master/common/utils.js
-  [10]: https://github.com/zwei76/myBlog-backup/raw/assets/【30分钟学完】canvas动画|游戏基础(1)：概念先行/1.png
-  [11]: https://github.com/zwei76/myBlog-backup/raw/assets/【30分钟学完】canvas动画|游戏基础(1)：概念先行/2.png
+  [10]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(1)：概念先行/1.png
+  [11]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(1)：概念先行/2.png
