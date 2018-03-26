@@ -243,7 +243,7 @@ window.onload = function () {
 
 [5]: https://github.com/nimokuri/H5Learning-animationDemo/blob/master/common/ball.js
 
-[6]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(2)：开始画画/1.png
+[6]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(2)：从零开始画画/1.png
 
 [8]: https://nimokuri.github.io/H5Learning-animationDemo/part2/03-bobbing-2.html
 
