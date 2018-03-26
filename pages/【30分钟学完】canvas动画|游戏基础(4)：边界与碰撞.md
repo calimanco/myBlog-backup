@@ -163,7 +163,46 @@ if (ball.y + ball.radius > bottom) {
 ![理想反弹与实际反弹][5]  
 
 从图中我们可以清除的知道，ball实际上是不太可能会在理想反弹点反弹的，因为如果速度过大，计算位置时ball已经越过“理想反弹点”到达“实际反弹点”，而我们如果只是将ball的x轴坐标简单粗暴移到边界上，那还是不可能是“理想反弹点”，也就是说这种反弹方法不准确。  
-那么，完美反弹的思路就明确了，我们需要找到“理想反弹点”，并将ball置到该点。  
+那么，完美反弹的思路就明确了，我们需要找到“理想反弹点”，并将ball置到该点，更准确的说是算出"理想反弹点"与“理想反弹点”在y轴上的距离。如图，思路如下：  
+
+![求理想反弹点][6]  
+
+1.  由速度可求得物体的方向弧度angle；
+2.  算出"实际反弹点"和“理想反弹点”在x轴上的距离；
+3.  依据正切求"实际反弹点"和“理想反弹点”在y轴上的距离；
+4.  “理想反弹点”的y轴坐标即是"实际反弹点"加上这段距离。
+
+改造后的核心代码如下，完整示例：[反弹球（完美版）][7]
+
+```javascript
+if (ball.x + ball.radius > right) {
+  const dx = ball.x - (right - ball.radius);
+  const dy = Math.tan(angle) * dx;
+  ball.x = right - ball.radius;
+  ball.y += dy;
+  vx *= bounce;
+} else if (ball.x - ball.radius < left) {
+  const dx = ball.x - (left + ball.radius);
+  const dy = Math.tan(angle) * dx;
+  ball.x = left + ball.radius;
+  ball.y += dy;
+  vx *= bounce;
+}
+if (ball.y + ball.radius > bottom) {
+  const dy = ball.y - (bottom - ball.radius);
+  const dx = dy / Math.tan(angle);
+  ball.y = bottom - ball.radius;
+  ball.x += dx;
+  vy *= bounce;
+} else if (ball.y - ball.radius < top) {
+  const dy = ball.y - (top + ball.radius);
+  const dx = dy / Math.tan(angle);
+  ball.y = top + ball.radius;
+  ball.x += dx;
+  vy *= bounce;
+}
+```
+
 [1]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(4)：边界与碰撞/1.png
 
 [2]: https://nimokuri.github.io/H5Learning-animationDemo/part5/01-removal.html
@@ -172,4 +211,8 @@ if (ball.y + ball.radius > bottom) {
 
 [4]: https://nimokuri.github.io/H5Learning-animationDemo/part5/04-bouncing-1.html
 
-[5]:https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(4)：边界与碰撞/2.png
+[5]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(4)：边界与碰撞/2.png
+
+[6]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(4)：边界与碰撞/3.png
+
+[7]: https://nimokuri.github.io/H5Learning-animationDemo/part5/05-bouncing-2.html
