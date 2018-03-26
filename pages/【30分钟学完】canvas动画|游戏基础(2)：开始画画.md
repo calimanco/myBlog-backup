@@ -5,13 +5,14 @@
 
 ## 一起来画画吧
 
-canvas的API有很多，如果一一列举30分钟你是绝对看不完的，而且怎么流水账还不如自己去看文档呢（笑），本教程的思路是用实例一步一步从无到有讲解基础用法。[canvas相关文档][1]  
+canvas的API有很多，如果一一列举30分钟你是绝对看不完的，而且怎么流水账还不如自己去看文档呢（笑），本教程的思路是用实例一步一步从无到有讲解基础用法。  
+[canvas相关文档][1]  
 
 ### 准备工作
 
-1.  布置画布：通过添加`<canvas>`标签，添加canvas元素
-2.  获取画布：通过`<canvas>`标签的id，获得canvas对象
-3.  获得画笔：通过canvas对象的getContext("2d")方法，获得2D环境
+1.  布置画布：通过添加`<canvas>`标签，添加canvas元素；
+2.  获取画布：通过`<canvas>`标签的id，获得canvas对象；
+3.  获得画笔：通过canvas对象的getContext("2d")方法，获得2D环境。
 
 ```html
 <canvas id="canvas" width="400" height="400"></canvas>
@@ -99,8 +100,8 @@ class Arrow {
 现在我们已经掌握了画画的基本功，并且可以画箭头[arrow.js][4]和圆[ball.js][5]，然而这样只是静止画，接下来我们需要一个循环，不断的执行擦除和重画的工作才能实现帧动画。
 下面这段代码的中绘图函数drawFrame被立即执行，并递归调用自身，你将会在大部分例子中看到。  
 循环原理上一篇已经说明，不再重复。这里要说明的是clearRect()，这个函数接受一个矩形坐标，也就是（x轴坐标，y轴坐标，矩形宽度，矩形高度），用于清除矩形区域内的画。  
-例子里直接是清除了整个画布，但这不是绝对的，刷不刷新，是局部刷新还是全部刷新，都需要灵活处理。
-这里有个不刷新的例子  
+例子里直接是清除了整个画布，但这不是绝对的，刷不刷新，是局部刷新还是全部刷新，都需要灵活处理。  
+这里有个不刷新的例子:[鼠标画图工具][2]
 
 ```javascript
 (function drawFrame() {
@@ -116,7 +117,8 @@ class Arrow {
 
 现在画面已经是在不断的重绘，但为什么还是静止的呢？因为每一次刷新都没有改变要画的内容。  
 那我们就给它一个目标吧，这样它才能动起来，比如就让箭头始终指向鼠标。  
-下面是核心代码，主要目的就是求出每帧arrow的旋转角度，这里使用的工具类mouse会实时返回鼠标的x，y轴坐标，封装原理上一篇已经讲过，根据这鼠标的坐标和arrow的坐标，即可得到鼠标的相对于arrow的距离dx和dy，如下图：
+下面是核心代码，主要目的就是求出每帧arrow的旋转角度，这里使用的工具类mouse会实时返回鼠标的x，y轴坐标，封装原理上一篇已经讲过，根据这鼠标的坐标和arrow的坐标，即可得到鼠标的相对于arrow的距离dx和dy，如下图：  
+
 ![图片描述][6]
 
 而arrow的旋转角度即可以通过dx和dy使用反正切函数得到，这里需要注意几点：
@@ -125,7 +127,7 @@ class Arrow {
 -   dx和dy是鼠标相对与arrow的坐标，所以图中把坐标系挪动箭头中心是没毛病的；
 -   用atan2，而不是atan，是因为tan值本来就可能是重复的，比如-1/2和1/(-2)两个都是-0.5，无法区分象限，而atan2就可以区分开。
 
-完整实例：[一个会跟踪鼠标位置的箭头][3]
+完整实例：[一个会跟踪鼠标位置的箭头][3]  
 
 ```javascript
 window.onload = function () {
@@ -161,7 +163,7 @@ ball.y = clientY + Math.sin(angle) * range;
 ```
 
 利用Math.sin(angle)的取值范围是-1到1，并且会随着angle增大而反复，使ball在一定范围上下运动。  
-完整例子：[一个上下运动的球（可调参数版）][8]
+完整例子：[一个上下运动的球（可调参数版）][8]  
 
 ```javascript
 window.onload = function () {
@@ -232,6 +234,8 @@ window.onload = function () {
 -   [中心点到鼠标的距离][17]
 
 [1]: https://developer.mozilla.org/zh-CN/docs/Web/API/Canvas_API
+
+[2]: https://nimokuri.github.io/H5Learning-animationDemo/part3/01-drawing-app.html
 
 [3]: https://nimokuri.github.io/H5Learning-animationDemo/part2/01-rotate-to-mouse.html
 
