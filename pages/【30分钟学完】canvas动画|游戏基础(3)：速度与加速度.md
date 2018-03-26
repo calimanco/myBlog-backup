@@ -214,7 +214,7 @@ window.onload = function () {
   let vx = 0;
   let vy = 0;
   // 削减系数
-  const friction = 0.9;
+  const friction = 0.95;
 
   (function drawFrame() {
     window.requestAnimationFrame(drawFrame, canvas);
