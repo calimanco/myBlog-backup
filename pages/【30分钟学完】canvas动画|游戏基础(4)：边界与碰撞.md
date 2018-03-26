@@ -172,7 +172,8 @@ if (ball.y + ball.radius > bottom) {
 3.  依据正切求"实际反弹点"和“理想反弹点”在y轴上的距离；
 4.  “理想反弹点”的y轴坐标即是"实际反弹点"加上这段距离。
 
-改造后的核心代码如下，完整示例：[反弹球（完美版）][7]
+改造后的核心代码如下，至于有没有必要多做这么多运算，这就要权衡性能和精密性了。  
+完整示例：[反弹球（完美版）][7]
 
 ```javascript
 if (ball.x + ball.radius > right) {
@@ -203,6 +204,53 @@ if (ball.y + ball.radius > bottom) {
 }
 ```
 
+## 碰撞检测
+
+和越界检查很像，我们扩展到两个物体间的碰撞检测，一般常用的有如下两种办法。  
+
+### 基于几何图形的碰撞检测
+
+一般是用在**检测矩形的碰撞**，原理就是判断一个物体是否和另一个物体有重叠。  
+下面直接给出两个检测的工具函数。完整示例：  
+
+-   [两个矩形碰撞检测演示][8]
+-   [矩形与点碰撞检测演示][9]
+
+```javascript
+// 两个矩形碰撞检测
+function intersects(rectA, rectB) {
+  return !(rectA.x + rectA.width < rectB.x ||
+    rectB.x + rectB.width < rectA.x ||
+    rectA.y + rectA.height < rectB.y ||
+    rectB.y + rectB.height < rectA.y);
+};
+```
+
+```javascript
+// 矩形与点碰撞检测
+function containsPoint(rect, x, y) {
+  return !(x < rect.x || x > rect.x + rect.width || y < rect.y || y > rect.y + rect.height);
+};
+```
+
+### 基于距离的碰撞检测
+
+一般是用在**检测圆形的碰撞**，原理就是判断两个物体是否足够近到发生碰撞。  
+对于圆来说，只要两个圆心距离小于两圆半径之和，那我们就可判定为碰撞。圆心距离可通过**勾股定理**求得。核心代码如下：  
+完整示例：[两圆基于距离的碰撞演示][10]
+
+```javascript
+const dx = ballB.x - ballA.x;
+const dy = ballB.y - ballA.y;
+const dist = Math.sqrt(dx ** 2 + dy ** 2);
+
+if (dist < ballA.radius + ballB.radius) {
+  log.value = 'Hit!';
+} else {
+  log.value = '';
+}
+```
+
 [1]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(4)：边界与碰撞/1.png
 
 [2]: https://nimokuri.github.io/H5Learning-animationDemo/part5/01-removal.html
@@ -216,3 +264,9 @@ if (ball.y + ball.radius > bottom) {
 [6]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(4)：边界与碰撞/3.png
 
 [7]: https://nimokuri.github.io/H5Learning-animationDemo/part5/05-bouncing-2.html
+
+[8]: https://nimokuri.github.io/H5Learning-animationDemo/part8/01-object-hit-test.html
+
+[9]: https://nimokuri.github.io/H5Learning-animationDemo/part8/03-point-hit-test.html
+
+[10]: https://nimokuri.github.io/H5Learning-animationDemo/part8/05-distance-2.html
