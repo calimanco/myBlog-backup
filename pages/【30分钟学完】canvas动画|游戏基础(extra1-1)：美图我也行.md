@@ -1,7 +1,7 @@
 ## 前言
 
-本文是接续系列教程的番外1，主要是介绍颜色系统在canvas中的应用。  
-本来是与番外1一起成文的，因为segmentfault莫名其妙的字数限制bug只能分割放送了。  
+本文是接续系列教程的extra1，主要是介绍颜色系统在canvas中的应用。  
+本来是与extra1一起成文的，因为segmentfault莫名其妙的字数限制bug只能分割放送了。  
 
 ## canvas操纵像素
 
@@ -32,7 +32,10 @@ let pixels = [255, 0, 0, 255, 255, 0, 0, 255,
               255, 0, 0, 255, 255, 0, 0, 255]
 ```
 
-他们与图像的对应关系是**从左到右，从上到下**，大概就像上面代码格式化这样。  
+他们与图像的对应关系是**从左到右，从上到下**，大概就像上面代码格式化这样，如图所示：  
+
+![像素对应位置][6]
+
 根据4对1的对应关系，我们很容易就能写出遍历的办法，offset就相当于指针，每次移动4位，代码如下：  
 
 ```javascript
@@ -165,3 +168,5 @@ window.onload = function () {
 [4]: https://nimokuri.github.io/H5Learning-animationDemo/part3/01-drawing-app.html
 
 [5]: https://nimokuri.github.io/H5Learning-animationDemo/part3/16-spray-paint.html
+
+[6]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(extra1-1)：美图我也行/1.png
