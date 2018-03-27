@@ -102,8 +102,17 @@
 }());
 ```
 
+## 回顾前面的示例
+
+-   [彩色喷泉][4]
+-   [往鼠标方向弹动的箭头][5]  
+
 [1]: https://nimokuri.github.io/H5Learning-animationDemo/part4/09-gravity.html
 
 [2]: https://nimokuri.github.io/H5Learning-animationDemo/part4/04-follow-mouse.html
 
 [3]: https://nimokuri.github.io/H5Learning-animationDemo/part5/06-friction-1.html
+
+[4]: https://nimokuri.github.io/H5Learning-animationDemo/part5/02-fountain.html
+
+[5]: https://nimokuri.github.io/H5Learning-animationDemo/part7/08-spring-4.html
