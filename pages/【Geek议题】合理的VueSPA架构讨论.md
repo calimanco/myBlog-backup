@@ -56,7 +56,7 @@ Vue作为现在流行的MVVM框架，也是本人平常业务中用得最多的�
     │   │   │   │   └── FinanceIndexItem.vue  财务模块首页里的条目项
     │   │   │   ├── pages  财务模块页面
     │   │   │   │   └── FinanceIndex.vue  财务模块首页
-    │   │   │   ├── api.js  模块专用api
+    │   │   │   ├── api.js  模块专属接口
     │   │   │   ├── index.js  模块入口
     │   │   │   ├── Layout.vue  模块承载页
     │   │   │   └── router.js  模块内路由
@@ -85,15 +85,16 @@ Vue作为现在流行的MVVM框架，也是本人平常业务中用得最多的�
 5.  资源图片只在项目中保留小图（就是会被webpack处理成base64那些），大图应使用cdn，可以动态获取也可以把地址写到一个脚本里；  
 6.  使用eslint使js代码符合Airbnb规范。  
 
-## 问题场景及解决方案
+## 分模块开发  
 
-### 细分模块实现按需打包
+项目过程中常遇到要把原来的项目分开部署，或是组件间耦合、或是多人开发时组件冲突等问题。本人提出的解决办法是将项目细分成模块进行开发，每个模块由若干相关“页面”组成，拥有私有组件、路由、api等，如示例所示：划分了三个模块，首页模块、财务模块、用户模块，每个模块下各自有独立的组件和页面。  
 
-项目过程中常遇到要把原来的项目分开部署，或是组件间耦合、或是多人开发时组件冲突等问题。本人提出的解决办法是将项目细分成模块进行开发，如示例所示：划分了三个模块，首页模块、财务模块、用户模块，每个模块下各自有独立的组件和页面。  
-这种方案的特点除了直观可见的目录结构清晰，其中Layout模块承载页、专用api和路由，也是一大优势。  
+> 【小结】这种方案的核心就是要将太过零散的组件（页面）聚合成模块，每个模块都有一定迁移性，互不耦合，实现按需打包，并且在代码分割上比单纯的分页面加载更加灵活可控。  
 
-1、Layout模块承载页  
-这个是为了让开发这个模块的程序员有类似根组件`<App>`的公共空间。从路由的角度来说，所有的模块内页面都是它的子路由。一般来说它只是个空的路由跳转页，当然你把模块的公共数据放这里也可以的，如下以示例的finance模块为例：  
+### Layout模块承载页  
+
+这个是为了让开发这个模块的程序员有类似根组件`<App>`的公共空间。从路由的角度来说，所有的模块内页面都是它的子路由，这样隔离了对全局路由的影响，至少路径定义可以随意些。  
+一般来说它只是个空的路由跳转页，当然你把模块的公共数据放这里也可以的，在子路由就能`this.$parent`拿到数据，可以当成子路由间的bus使用，如下以示例的user模块为例：  
 
 ```html
 <template>
@@ -101,14 +102,156 @@ Vue作为现在流行的MVVM框架，也是本人平常业务中用得最多的�
 </template>
 <script>
 export default {
-  name: 'finance',
+  name: 'user',
   data(){
     return {
-      money: 123;
-    }
-  }
+      name: '大白',
+      age: 12,
+    };
+  },
 };
 </script>
 ```
 
+### 模块内路由
+
+模块内路由最后都会被导入总路由中，不要以为只是简单合并了文件，这里的设计也跟Layout模块承载页有关，
+下面以user模块为例，我们把个人中心、登录和修改个人信息这三个页面归为user模块，路由规划如下。  
+
+- 个人中心：`/user`
+- 登录：`/user/login`
+- 修改个人信息：`/user/userInfo`
+
+其中由于“个人中心”是一级页面，需求要求底部有tabBar，所以使它只能是一级路由。  
+接下来你会发现Layout模块承载页的路由路劲也是'/user'，这里不用担心会乱，因为路由管理是按顺序匹配的，至于为什么要路径一样，这只是为了满足路由规划，让路径好看而已。  
+
+```javascript
+// 通用的tabbar
+import IndexTabBar from '@/components/common/IndexTabBar';
+// 模块内的页面
+import UserIndex from './pages/UserIndex';
+import UserLogin from './pages/UserLogin';
+import UserInfo from './pages/UserInfo';
+
+export default [
+  // 一级路由
+  {
+    name: 'userIndex',
+    path: '/user',
+    meta: {
+      title: '个人中心',
+    },
+    components: {
+      default: UserIndex,
+      footer: IndexTabBar,
+    },
+  },
+  {
+    path: '/user',
+    // 这里分割子路由
+    component: () => import('./layout.vue'),  
+    children: [
+      // 二级路由
+      {
+        name: 'userLogin',
+        path: 'login',
+        meta: {
+          title: '登录',
+        },
+        component: UserLogin,
+      },
+      {
+        name: 'userInfo',
+        path: 'info',
+        meta: {
+          title: '修改个人信息',
+          requiresAuth: true,
+        },
+        component: UserInfo,
+      },
+    ],
+  },
+];
+
+```
+模块承载页以懒加载的形式`component: () => import('./layout.vue')`引入，这会使webpack在此处分割代码，也就是说进入模块内是需要再此请求的，可以减少首次加载的数据量，提高速度。  
+[官方关于懒加载的文档][2]  
+这里你会发现后续的子路由，又是以直接引入的方式加载，也就是说整个模块会一起加载，实现了**分模块加载**。  
+这与简单的分页面加载不同，分页面加载一直有个难点，就是分割的量比较难把握（太多会增加请求次数，太少又降低了速度），而分模块可以将相关页面一起加载（跟提高缓存命中率很像），可以更灵活的规划我们的加载，最终效果：
+
+1. 用户进入应用，首页的三个页面（有tabbar的）就已经加载完毕，这时点击哪个tabbar按钮都能流畅；
+2. 当用户进入某个页面内的子页面，会产生一次请求；
+3. 这时整个模块的页面都加载完（不一定要全部），用户在这个模块内又能流畅访问。
+
+### 专属api
+
+这个设计跟模块内路由类似，目的也是为了按需加载和隔离全局。  
+下面也是以user模块的专属api为例，可以发现和路由有一些不同就是这里为了防止模块跟全局耦合，运用函数式编程思想（类似于依赖注入），将全局的axios实例作为函数参数传入，再返回出一个包含api的对象，这个导出的对象将会被**以模块名命名**，合并到全局的api集中。  
+
+```javascript
+export default function (axios) {
+  return {
+    postHeadImg(token, userId, data) {
+      const options = {
+        method: 'post',
+        name: '换头像',
+        url: '/data/user/updateHeadImg',
+        headers: {
+          token,
+          userId,
+        },
+        data,
+      };
+      return axios(options);
+    },
+    postProduct(token, userId, data) {
+      const options = {
+        method: 'post',
+        name: '提交产品选择',
+        url: '/product/opt',
+        headers: {
+          token,
+          userId,
+        },
+        data,
+      };
+      return axios(options);
+    },
+  };
+}
+```
+### 模块入口
+
+为了方便引用，每个模块目录下都有一个index.js，引入模块的时候可以省略，node会自动读这个文件。  
+还是以user模块为例，这里主要是引入模块专属api和模块内路由，并定义了模块的名字，这个名字是后面挂载专属api是时候用的。  
+
+```javascript
+import api from './api';
+import router from './router';
+
+export default {
+  name: 'user',
+  api,
+  router,
+};
+```
+
+### 按需打包
+
+示例中config目录下有个modules.js文件是指定打包需要的模块，
+
+```javascript
+import home from '@/modules/home';
+import finance from '@/modules/finance';
+import user from '@/modules/user';
+
+export default [
+  home,
+  finance,
+  user
+]
+```
+
 [1]: https://nimokuri.github.io/myBlog-backup/assets/【Geek议题】合理的VueSPA架构讨论/1.png
+
+[2]: https://router.vuejs.org/zh-cn/advanced/lazy-loading.html
