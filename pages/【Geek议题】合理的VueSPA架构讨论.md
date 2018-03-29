@@ -35,7 +35,9 @@ Vue作为现在流行的MVVM框架，也是本人平常业务中用得最多的�
     ├── config
     ├── dist
     ├── src  开发目录
-    │   ├── api  公共接口集
+    │   ├── api  公共api集
+    │   │   ├── axiosConfig.js  axios的配置
+    |   |   └── index.js  公共api集入口
     │   ├── assets  资源目录
     │   │   ├── images  图片
     │   │   ├── scripts  第三方脚本
@@ -56,7 +58,7 @@ Vue作为现在流行的MVVM框架，也是本人平常业务中用得最多的�
     │   │   │   │   └── FinanceIndexItem.vue  财务模块首页里的条目项
     │   │   │   ├── pages  财务模块页面
     │   │   │   │   └── FinanceIndex.vue  财务模块首页
-    │   │   │   ├── api.js  模块专属接口
+    │   │   │   ├── api.js  模块api集
     │   │   │   ├── index.js  模块入口
     │   │   │   ├── Layout.vue  模块承载页
     │   │   │   └── router.js  模块内路由
@@ -85,13 +87,13 @@ Vue作为现在流行的MVVM框架，也是本人平常业务中用得最多的�
 5.  资源图片只在项目中保留小图（就是会被webpack处理成base64那些），大图应使用cdn，可以动态获取也可以把地址写到一个脚本里；  
 6.  使用eslint使js代码符合Airbnb规范。  
 
-## 分模块开发  
+## 低耦合模块化开发
 
-项目过程中常遇到要把原来的项目分开部署，或是组件间耦合、或是多人开发时组件冲突等问题。本人提出的解决办法是将项目细分成模块进行开发，每个模块由若干相关“页面”组成，拥有私有组件、路由、api等，如示例所示：划分了三个模块，首页模块、财务模块、用户模块，每个模块下各自有独立的组件和页面。  
+项目过程中常遇到要把原来的项目分开部署，或是组件间耦合、或是多人开发时组件冲突等问题。本人提出的解决办法是将项目细分成模块进行开发，每个模块由若干相关“页面”组成，拥有私有组件、路由、api等，如示例所示：划分了三个模块，首页模块、财务模块、用户模块。  
 
 > 【小结】这种方案的核心就是要将太过零散的组件（页面）聚合成模块，每个模块都有一定迁移性，互不耦合，实现按需打包，并且在代码分割上比单纯的分页面加载更加灵活可控。  
 
-### Layout模块承载页  
+### Layout模块承载页
 
 这个是为了让开发这个模块的程序员有类似根组件`<App>`的公共空间。从路由的角度来说，所有的模块内页面都是它的子路由，这样隔离了对全局路由的影响，至少路径定义可以随意些。  
 一般来说它只是个空的路由跳转页，当然你把模块的公共数据放这里也可以的，在子路由就能`this.$parent`拿到数据，可以当成子路由间的bus使用，如下以示例的user模块为例：  
@@ -118,9 +120,9 @@ export default {
 模块内路由最后都会被导入总路由中，不要以为只是简单合并了文件，这里的设计也跟Layout模块承载页有关，
 下面以user模块为例，我们把个人中心、登录和修改个人信息这三个页面归为user模块，路由规划如下。  
 
-- 个人中心：`/user`
-- 登录：`/user/login`
-- 修改个人信息：`/user/userInfo`
+-   个人中心：`/user`
+-   登录：`/user/login`
+-   修改个人信息：`/user/userInfo`
 
 其中由于“个人中心”是一级页面，需求要求底部有tabBar，所以使它只能是一级路由。  
 接下来你会发现Layout模块承载页的路由路劲也是'/user'，这里不用担心会乱，因为路由管理是按顺序匹配的，至于为什么要路径一样，这只是为了满足路由规划，让路径好看而已。  
@@ -172,21 +174,21 @@ export default [
     ],
   },
 ];
-
 ```
+
 模块承载页以懒加载的形式`component: () => import('./layout.vue')`引入，这会使webpack在此处分割代码，也就是说进入模块内是需要再此请求的，可以减少首次加载的数据量，提高速度。  
 [官方关于懒加载的文档][2]  
 这里你会发现后续的子路由，又是以直接引入的方式加载，也就是说整个模块会一起加载，实现了**分模块加载**。  
 这与简单的分页面加载不同，分页面加载一直有个难点，就是分割的量比较难把握（太多会增加请求次数，太少又降低了速度），而分模块可以将相关页面一起加载（跟提高缓存命中率很像），可以更灵活的规划我们的加载，最终效果：
 
-1. 用户进入应用，首页的三个页面（有tabbar的）就已经加载完毕，这时点击哪个tabbar按钮都能流畅；
-2. 当用户进入某个页面内的子页面，会产生一次请求；
-3. 这时整个模块的页面都加载完（不一定要全部），用户在这个模块内又能流畅访问。
+1.  用户进入应用，首页的三个页面（有tabbar的）就已经加载完毕，这时点击哪个tabbar按钮都能流畅；
+2.  当用户进入某个页面内的子页面，会产生一次请求；
+3.  这时整个模块的页面都加载完（不一定要全部），用户在这个模块内又能流畅访问。
 
-### 专属api
+### 模块api集
 
 这个设计跟模块内路由类似，目的也是为了按需加载和隔离全局。  
-下面也是以user模块的专属api为例，可以发现和路由有一些不同就是这里为了防止模块跟全局耦合，运用函数式编程思想（类似于依赖注入），将全局的axios实例作为函数参数传入，再返回出一个包含api的对象，这个导出的对象将会被**以模块名命名**，合并到全局的api集中。  
+下面也是以user模块的模块api集为例，可以发现和路由有一些不同就是这里为了防止模块跟全局耦合，运用函数式编程思想（类似于依赖注入），将全局的axios实例作为函数参数传入，再返回出一个包含api的对象，这个导出的对象将会被**以模块名命名**，合并到全局的api集中。  
 
 ```javascript
 export default function (axios) {
@@ -220,6 +222,7 @@ export default function (axios) {
   };
 }
 ```
+
 ### 模块入口
 
 为了方便引用，每个模块目录下都有一个index.js，引入模块的时候可以省略，node会自动读这个文件。  
@@ -238,7 +241,8 @@ export default {
 
 ### 按需打包
 
-示例中config目录下有个modules.js文件是指定打包需要的模块，
+示例中config目录下有个modules.js文件是指定打包需要的模块，测试一下打包不同数量的模块，会发现产品文件大小会改变，这就证明了已经实现按需打包。
+至于路由和api集的子模块整合实现，后面会提到。   
 
 ```javascript
 import home from '@/modules/home';
@@ -252,6 +256,134 @@ export default [
 ]
 ```
 
+## api集的配置
+
+> 【背景】示例项目模拟常见的接口约定，服务器与应用交互有两个自定义头部：token和userId。token是权限标识符，几乎全部api都需要带上，为了防CSRF；userId是登录状态标识符，有些需要登录状态才能使用的接口才需要带上，这两个标识符都有有效期。本示例暂不考虑自动续期的机制。
+
+在api管理方面本人比较喜欢集中管理接口和配置，但发起请求和请求回调倾向与每个接口单独处理。  
+
+### 导出axios实例
+
+axios是比较流行的ajax的promise封装。[axios官方文档][3]  
+示例项目的在api文件夹下的axiosConfig.js就是axios的配置，主要是导出一个符合项目设置的实例，并进行一些拦截器设置。  
+
+```javascript
+// 引入axios包
+import axios from 'axios';
+// 引入环境配置
+import env from '../config/env';
+// 引入公共状态管理
+import store from '../store/index';
+
+// 全局默认配置
+const myAxios = axios.create({
+  // 跨域带cookie
+  withCredentials: true,
+  // 基础url
+  baseURL: `${env.apiUrl}/${env.apiVersion}`,
+  // 超时时间
+  timeout: 12000,
+});
+
+// 请求发起前拦截器
+myAxios.interceptors.request.use((_config) => {
+  const config = _config;
+  const source = axios.CancelToken.source();
+
+  config.cancelToken = source.token;
+
+  // 取消请求标记保存
+  store.commit('addCancelToken', {
+    name: config.name,
+    source,
+  });
+
+  return config;
+}, () => {
+  // 异常处理
+  console.error('请求发起前拦截器异常');
+});
+
+// 响应拦截器
+myAxios.interceptors.response.use((response) => {
+  // 删除取消标记
+  store.commit('deleteCancelToken', response.config.name);
+
+  console.log(response);
+  return response;
+}, (error) => {
+  console.error(error);
+  // 清理取消标记
+  store.commit('clearCancelToken');
+  return Promise.reject(error);
+});
+
+export default myAxios;
+```
+
+### 公共api集
+
+项目的所有公共api都会编写到这里。
+
+```javascript
+// 引入axios实例
+import axios from './axiosConfig';
+// 引入模块
+import modules from '../config/modules';
+
+const apiList = {
+  getToken() {
+    const params = {
+      appid: 'wx',
+      secret: 'wx',
+    };
+    const options = {
+      method: 'post',
+      name: '获取token',
+      url: '/token/get',
+      data: params,
+    };
+    return axios(options);
+  },
+  loginWithName(token, data) {
+    const options = {
+      method: 'post',
+      name: '用户名密码登录',
+      url: '/data/user/login4up',
+      headers: {
+        token,
+      },
+      data,
+    };
+    return axios(options);
+  },
+  postHeadImg(token, userId, data) {
+    const options = {
+      method: 'post',
+      name: '换头像',
+      url: '/data/user/updateHeadImg',
+      headers: {
+        token,
+        userId,
+      },
+      data,
+    };
+    return axios(options);
+  },
+};
+// 使每个模块里的api集挂载到以模块名为名的命名空间下
+modules.forEach((i) => {
+  Object.assign(apiList, {
+    [i.name]: i.api(axios),
+  });
+});
+
+export default apiList;
+```
+
+
 [1]: https://nimokuri.github.io/myBlog-backup/assets/【Geek议题】合理的VueSPA架构讨论/1.png
 
 [2]: https://router.vuejs.org/zh-cn/advanced/lazy-loading.html
+
+[3]: https://github.com/axios/axios
