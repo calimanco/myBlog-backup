@@ -36,7 +36,7 @@ Vue作为现在流行的MVVM框架，也是本人平常业务中用得最多的�
     ├── dist
     ├── src  开发目录
     │   ├── api  公共api集
-    │   │   ├── axiosConfig.js  axios的配置
+    │   │   ├── axiosConfig.js  axios实例配置
     |   |   └── index.js  公共api集入口
     │   ├── assets  资源目录
     │   │   ├── images  图片
@@ -265,7 +265,11 @@ export default [
 ### 导出axios实例
 
 axios是比较流行的ajax的promise封装。[axios官方文档][3]  
+本人推荐在全局保留唯一的axios实例，所有的请求都使用这个公共实例发起，实现配置的统一。  
 示例项目的在api文件夹下的axiosConfig.js就是axios的配置，主要是导出一个符合项目设置的实例，并进行一些拦截器设置。  
+
+> 【PS】至于为什么到导出实例而不是直接修改axios默认值？  
+这是为了预防某些特例情况下公共实例无法满足需求，需要单独配置axios的情况，所以为了不污染原始的axios默认值，不推荐修改默认值。
 
 ```javascript
 // 引入axios包
@@ -287,34 +291,17 @@ const myAxios = axios.create({
 
 // 请求发起前拦截器
 myAxios.interceptors.request.use((_config) => {
-  const config = _config;
-  const source = axios.CancelToken.source();
-
-  config.cancelToken = source.token;
-
-  // 取消请求标记保存
-  store.commit('addCancelToken', {
-    name: config.name,
-    source,
-  });
-
+  // ...
   return config;
 }, () => {
   // 异常处理
-  console.error('请求发起前拦截器异常');
 });
 
 // 响应拦截器
 myAxios.interceptors.response.use((response) => {
-  // 删除取消标记
-  store.commit('deleteCancelToken', response.config.name);
-
-  console.log(response);
-  return response;
+  // ...
 }, (error) => {
-  console.error(error);
-  // 清理取消标记
-  store.commit('clearCancelToken');
+  // 异常处理
   return Promise.reject(error);
 });
 
@@ -323,25 +310,24 @@ export default myAxios;
 
 ### 公共api集
 
-项目的所有公共api都会编写到这里。
+项目的所有公共api都会编写到这里，实现集中化管理，最后公共api集会挂载到vue根实例下，使用`this.$api`就可以方便的访问。  
+由于token和userId不是必须头部，这里我推荐每个接口函数都单独处理，按需传入，这样api函数也能更加清晰。
+给每个接口起名字，是为了后续取消请求所设计的。   
+整体思路：**先定义公共api，再将模块内api（按需）挂载进来**，最后导出api集。   
 
 ```javascript
-// 引入axios实例
+// 引入已经配置好的axios实例
 import axios from './axiosConfig';
 // 引入模块
 import modules from '../config/modules';
 
 const apiList = {
+  // 获取token不需要
   getToken() {
-    const params = {
-      appid: 'wx',
-      secret: 'wx',
-    };
     const options = {
       method: 'post',
       name: '获取token',
       url: '/token/get',
-      data: params,
     };
     return axios(options);
   },
@@ -381,6 +367,178 @@ modules.forEach((i) => {
 export default apiList;
 ```
 
+## 路由管理配置
+
+### 导入模块内路由
+
+使用示例中用router文件夹下的index.js配置全局路由，api集类似实现集中化管理，导出路由实例会挂载到vue根实例下，使用`this.$router`就可以方便的访问。  
+配置参考官方文档，这里主要提的一点是，模块内路由的整合，见实例代码段。  
+
+```javascript
+Vue.use(Router);
+// 路由配置
+const routerConfig = {
+  routes: [
+    {
+      path: '/',
+      meta: {
+        title: env.appName,
+      },
+      redirect: { name: 'home' },
+    },
+    {
+      name: 'success',
+      path: '/success',
+      meta: {
+        title: '成功',
+      },
+      component: Success,
+    },
+    {
+      path: '*',
+      component: NotFound,
+    },
+  ],
+};
+// 将模块内的路由拼接到全局
+modules.forEach((i) => {
+  routerConfig.routes = routerConfig.routes.concat(i.router);
+});
+const router = new Router(routerConfig);
+```
+
+### 在路由钩子函数中处理标题和权限
+
+路由的钩子函数有很多妙用，这里列举了一些例子。  
+路由元信息meta可以自定义需要的数据，相当于给路由一个标记，然后在router.afterEach钩子函数中可以读取到并进行处理。  
+回顾上面示例的模块内路由，meta中定义了title（标题）和requiresAuth（是否要登录状态），这就会在这里体现出用处。把登录权限设置在这里判断是为了防止用户进入某些需要权限的“页面”。  
+
+```javascript
+router.beforeEach((to, from, next) => {
+  // 关闭公共弹框
+  if (window.loading) {
+    window.loading.close();
+  }
+  // 设置微信分享（如果有）
+  wxShare({
+    title: '哇哈哈',
+    desc: '在路由钩子函数中处理标题和权限',
+    link: env.shareBaseUrl,
+    imgUrl: env.shareBaseUrl + '/images/shareLogo.png'
+  });
+  // 设置标题
+  document.title = to.meta.title ? to.meta.title : '示例';
+  // 检查登录状态
+  if (to.meta.requiresAuth) {
+    // 目标路由需要登录状态
+    // ...
+  }
+  next();
+});
+```
+
+## 自动化管理权限标识符（token）
+
+权限标识符的特点就是几乎每个链接都要带上，需要维护有效期，为了不浪费服务器资源还需要持久化并保证请求唯一。本人比较推荐使用**公共状态管理vuex进行自动化管理**，减少代码编写时的顾虑。  
+
+### 妙用公共状态管理获取token
+
+实例中公共状态中的com模块里有tokenObj和waitToken两个字段，其中tokenObj包含了token和过期时间，waitToken是一个标记是否当前在获取token的布尔值。  
+
+> 【PS】为什么要token保证唯一一次请求？  
+常见的场景：当用户进入应用，这时候token要么没有要么已过期，这时页面需要并发两个ajax请求，由于都没有token，不唯一化处理的话，会同时先发起两个token请求，这样首先是浪费了请求资源，其次由于是异步请求，不能保证两次token的顺序，如果服务器对token管理较严格则会出问题。  
+
+由于获取token是异步操作，所以getToken写在actions中，把主要过程包裹成立即执行函数，并通过waitToken判断是否要等待，如果要等待就隔一段时间再检查，这样就保证了并发请求时，token能唯一。
+
+```javascript
+const actions = {
+  // needToRegain是为了特殊条件下强制获取使用
+  getToken({ commit, state: _state }, needToRegain) {
+    return new Promise((resolve, reject) => {
+      (function main() {
+        // 如果waitToken为真即表示发起了请求但还未回应
+        if (_state.waitToken) {
+          console.log('等待token');
+          setTimeout(() => {
+            main();
+          }, 1000);
+          return;
+        }
+        // 是否过期标记
+        let isExpire = false;
+        // 提取现有的tokenObj
+        let tokenObj = {
+          ..._state.tokenObj,
+        };
+        // 如果没有token就从本地存储中读取
+        if (!tokenObj.token) {
+          tokenObj = JSON.parse(localStorage.getItem('tokenObj'));
+          // 如果本地有tokenObj会顺便添加到状态管理
+          if (tokenObj) {
+            commit('setTokenObj', tokenObj);
+          }
+        }
+        // token是否过时
+        if (tokenObj && tokenObj.token) {
+          isExpire = new Date().getTime() - tokenObj.expireTime > -10000;
+        }
+        // 综合判断是否需要获取token
+        if (!tokenObj || !tokenObj.token || isExpire || needToRegain) {
+          commit('setWaitToken', true);
+          api.getToken().then((res) => {
+            // 检查返回的数据
+            const checkedData = connect.dataCheck(res);
+            if (checkedData.isDataReady) {
+              const newTokenObj = {
+                token: checkedData.data.token,
+                expireTime: new Date().getTime() + (checkedData.data.expire_time * 1000),
+              };
+              // 设置TokenObj会顺便保留一份到本地存储
+              commit('setTokenObj', newTokenObj);
+              commit('setWaitToken', false);
+              console.log('获取token成功');
+              resolve(newTokenObj.token);
+            } else {
+              commit('setWaitToken', false);
+              console.error('获取token失败');
+              reject(checkedData.msg);
+            }
+          }).catch((err) => {
+            window.toast('网络错误');
+            commit('setWaitToken', false);
+            reject(err);
+          });
+        } else {
+          console.log('token已存在，直接返回');
+          resolve(tokenObj.token);
+        }
+      }());
+    });
+  },
+};
+```
+
+### token在请求代码中使用
+
+将需要token的api函数套在getToken的回调中，就能方便的使用，不用再担心token是否过期。  
+
+```javascript
+const sendData = {
+  mobile: this.formData1.mobile,
+};
+this.$store.dispatch('getToken').then((token) => {
+  this.$api.sendSMS(token, sendData).then((res) => {
+    const checkedData = this.$connect.dataCheck(res);
+    if (checkedData.isDataReady) {
+      window.toast('验证码已发送，请查收短信');
+    } else {
+      window.toast('验证码发送失败');
+    }
+  }).catch(() => {
+    window.toast('网络错误');
+  });
+});
+```
 
 [1]: https://nimokuri.github.io/myBlog-backup/assets/【Geek议题】合理的VueSPA架构讨论/1.png
 
