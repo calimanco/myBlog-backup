@@ -121,13 +121,13 @@ window.onload = function () {
 
 前面的章节中我们介绍过越界的一种处理办法是反弹，由于边界是矩形，反弹面垂直或水平，所以可以直接将对应轴的速度取反即可，但对于非垂直或水平的反弹面这种方法是不适用的。  
 坐标旋转常见的应用就是处理这种情况，将不规律方向的复杂问题简单化。  
-基本思路：  
+基本思路：（旋转前后如图）  
 
 1. 使用旋转公式，旋转整个系统，将斜面场景转变为水平场景；
 2. 在水平场景中处理反弹；
 3. 再旋转回来。
 
-
+![旋转前后系统][5]
 
 [1]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(6)：坐标旋转探究/1.png
 
@@ -136,3 +136,5 @@ window.onload = function () {
 [3]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(6)：坐标旋转探究/2.png
 
 [4]: https://nimokuri.github.io/H5Learning-animationDemo/part9/02-rotate-2.html
+
+[5]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(6)：坐标旋转探究/3.png
