@@ -129,6 +129,71 @@ window.onload = function () {
 
 ![旋转前后系统][5]
 
+示例是一个球掉落到一条线上，球受到重力加速度影响下落，碰到斜面就会反弹，每次反弹都会损耗速度。  
+完整示例：[斜面反弹示例][6]
+
+```javascript
+window.onload = function () {
+  const canvas = document.getElementById('canvas');
+  const context = canvas.getContext('2d');
+  const ball = new Ball();
+  // line类构造函数参数（开始点x轴坐标，开始点y轴坐标，结束点x轴坐标，结束点y轴坐标）
+  const line = new Line(0, 0, 500, 0);
+  // 设置重力加速度
+  const gravity = 0.2;
+  // 设置反弹系数
+  const bounce = -0.6;
+
+  ball.x = 100;
+  ball.y = 100;
+
+  line.x = 0;
+  line.y = 200;
+  line.rotation = 10 * Math.PI / 180;
+
+  const cos = Math.cos(line.rotation);
+  const sin = Math.sin(line.rotation);
+
+  (function drawFrame() {
+    window.requestAnimationFrame(drawFrame, canvas);
+    context.clearRect(0, 0, canvas.width, canvas.height);
+
+    ball.vy += gravity;
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    // 获取ball与line的相对位置
+    let x1 = ball.x - line.x;
+    let y1 = ball.y - line.y;
+    // 旋转坐标系（反向）
+    let y2 = y1 * cos - x1 * sin;
+
+    // 依据旋转值执行反弹
+    if (y2 > -ball.radius) {
+      // 旋转坐标系（反向）
+      const x2 = x1 * cos + y1 * sin;
+      // 旋转速度（反向）
+      const vx1 = ball.vx * cos + ball.vy * sin;
+      let vy1 = ball.vy * cos - ball.vx * sin;
+
+      y2 = -ball.radius;
+      vy1 *= bounce;
+
+      // 将所有东西回转（正向）
+      x1 = x2 * cos - y2 * sin;
+      y1 = y2 * cos + x2 * sin;
+      ball.vx = vx1 * cos - vy1 * sin;
+      ball.vy = vy1 * cos + vx1 * sin;
+      ball.x = line.x + x1;
+      ball.y = line.y + y1;
+    }
+
+    ball.draw(context);
+    line.draw(context);
+  }());
+};
+```
+
 [1]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(6)：坐标旋转探究/1.png
 
 [2]: https://nimokuri.github.io/H5Learning-animationDemo/part9/01-rotate-1.html
@@ -138,3 +203,5 @@ window.onload = function () {
 [4]: https://nimokuri.github.io/H5Learning-animationDemo/part9/02-rotate-2.html
 
 [5]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(6)：坐标旋转探究/3.png
+
+[6]: https://nimokuri.github.io/H5Learning-animationDemo/part9/05-angle-bounce-opt.html
