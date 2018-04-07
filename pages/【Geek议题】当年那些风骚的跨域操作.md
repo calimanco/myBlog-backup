@@ -2,6 +2,7 @@
 
 现在cross-origin resource sharing（跨域资源共享，下简称CORS）已经十分普及，算上IE8的不标准兼容（XDomainRequest），各大浏览器基本都已支持，当年为了前后端分离、iframe交互和第三方插件开发而头疼跨域是时代已经过去，但当年为了跨域无所不用其极的风骚操作却依然值得学习。  
 本篇文章不是从实用的角度考量这些旧时代的跨域手段，而是更偏向理论的阐述，并引发都浏览器安全的思考，因为跨域实际上也是各类攻击的核心。  
+本人个人的观点，不代表是最佳实践，欢迎大牛一起讨论，批评指正。   
 
 ## 同源策略
 
@@ -84,7 +85,7 @@ document.getElementByTagName('head')[0].appendChild(script);
 -   只能是GET方法；
 -   受浏览器URL最大长度2083字符限制；
 -   无法调试，服务器错误无法检测到具体原因；
--   有安全风险，CSRF的基础；
+-   有CSRF的安全风险；
 -   只能是异步，无法同步阻塞；
 -   需要特殊接口支持，不能基于REST的API规范。
 
@@ -111,36 +112,34 @@ document.getElementByTagName('head')[0].appendChild(script);
 <!DOCTYPE html>
 <html>
 	<script>
-		document.domain = 'publisher.com';
+		document.domain = 'demo.com';
 	</script>
 	<script src="jquery.min.js"></script>
 </html>
 ```
 
 ```javascript
-// 发起请求的函数
-function getProductData(id){
-	var iframe = document.createElement('iframe');
-	// 链接到代理页
-	iframe.src = 'http://api.demo.com/proxy.html';
-	// 代理页就绪时触发
-	iframe.onload = function(){
-		// 由于代理页已经和父页设置了相同的源，父的脚本可以调用代理页的ajax工具；
-    // 由于是在子页面发起，其请求地址就跟子页面同源了。
-		iframe.contentWindow.jQuery.ajax({
-			method: 'POST',
-			url: 'http://api.demo.com/products',
-			data: {
-				product: id,
-			},
-			success: function(){
-        document.body.removeChild(iframe);
-				/*...*/
-			}
-		})
-	}
-	document.getElementsByTagName('head')[0].appendChild(iframe);
+// 新建iframe
+var iframe = document.createElement('iframe');
+// 链接到代理页
+iframe.src = 'http://api.demo.com/proxy.html';
+// 代理页就绪时触发
+iframe.onload = function(){
+  // 由于代理页已经和父页设置了相同的源，父的脚本可以调用代理页的ajax工具；
+  // 由于是在子页面发起，其请求地址就跟子页面同源了。
+  iframe.contentWindow.jQuery.ajax({
+    method: 'POST',
+    url: 'http://api.demo.com/products',
+    data: {
+      product: id,
+    },
+    success: function(){
+      document.body.removeChild(iframe);
+      /*...*/
+    }
+  })
 }
+document.getElementsByTagName('head')[0].appendChild(iframe);
 ```
 
 **总结**  
@@ -209,8 +208,185 @@ document.body.removeChild(form);
 document.body.removeChild(frame);
 ```
 
+```html
+// 最简单返回html
+<!DOCTYPE html>
+<html>
+	<script>
+		document.domain = 'demo.com';
+		window.parent.jsonpCallback('{"status":"success"}');
+	</script>
+</html>
+```
+
+**总结**  
+
+由于这个方法是JSON-P与子域名代理的结合版，可以说即拥有两者的优点，也保留了两者一些缺点。  
+
+优点：  
+
+-   可以发送任意类型的请求；
+-   不需要代理页；
+-   支持上古级别的浏览器（IE8-）。
+
+缺点：  
+
+-   不太适合第三方API，给第二方使用较麻烦；
+-   iframe对浏览器性能影响较大；
+-   无法使用非协议默认端口的API；
+-   需要特殊接口支持，不能基于REST的API规范。
+
+## window.name
+
+这方法利用了`window.name`的特性：一旦被赋值后，当窗口被重定向到一个新的URL时不会改变它的值。这一行为使得不同域的特定文档可以读取该属性值，因此可以绕过同源策略并使跨域消息通信成为可能。  
+
+> 【PS】例子里演示的是发起get请求，只要把请求地址直接写到src里就行了。如果想要发起其他类型的请求，可以类比采用模拟的form的方式进行改造。
+
+**原理及流程**
+
+1.  新建iframe，使用iframe访问一个非同源的地址（发请求）；
+2.  当页面加载完成后，iframe内脚本给window.name属性赋值，这时父页面还是不能读取到子页面的属性（因为不同源）；
+3.  iframe自身回调到一个同源的地址（可能只是个空白页），这时候window.name没有改变；
+4.  父页面顺利读取window.name的值。
+
+![window.name流程图][4]
+
+```javascript
+// 新建iframe
+var iframe = document.createElement('iframe');
+var body = document.getElementByTagName('body');
+// 隐藏iframe并链接地址
+iframe.style.display = 'none';
+iframe.src = 'http://api.demo.com/server.html?id=1';
+// 因为需要两次跳转，这里有个完成标记
+var done = fasle;
+// 这里会触发至少两次，一次由于非同源是取不到值的。
+iframe.onload = iframe.onreadystatechange = function(){
+	if(! this.readyState && (iframe.readyState !== 'complete' || done)){
+		return;
+	}
+	console.log('Listening');
+	var name = iframe.contentWindow.name;
+	if(name){
+		console.log(iframe.contentWindow.name);
+		done = true;
+	}
+};
+body.appendChild(iframe);
+```
+
+```html
+// 最简单返回html
+<!DOCTYPE html>
+<html>
+	<script>
+	function init(){
+		window.name = 'hello';
+		window.location = 'http://demo.com/empty.html'
+	}
+	</script>
+	<body onload="init();"></body>
+</html>
+```
+
+**总结**  
+
+优点：  
+
+-   可以发送任意类型的请求；
+-   不需要设置子域名。
+
+缺点：  
+
+-   iframe对浏览器性能影响较大；
+-   需要特殊接口支持，不能基于REST的API规范；
+-   每当你想要获取一条新的消息时都不得不发起两次网络请求，网络成本大；
+-   需要准备空白页，对它的访问是无意义的，影响流量统计。
+
+## window.hash
+
+这个方法利用了location的特性：不同域的页面，可以写不可读。而只改变哈希部分（井号后面）不会导致页面跳转。也就是可以让父、子页面互相写对方的location的哈希部分，进行通讯。
+
+**原理及流程**
+
+1.  新建iframe，使用iframe访问一个非同源的地址（发请求），参数里带上父页面url；
+2.  当页面加载完成后，iframe内脚本设置父页面的url并在哈希部分带上数据；
+3.  父页面的脚本循环检查哈希值的变化，如果检查到有值就取值并清空哈希值；
+
+> 【PS】父页面会循环检查哈希是否改变来读取值，因为这种降级方案的使用环境一般是不会有hashchange事件的。演示里是最简单的get方法，如果想要发起其他类型的请求，可以类比采用模拟的form的方式进行改造，但记住不要丢失父页面的url。
+
+![window.hash流程图][5]
+
+```javascript
+// 获取当前url
+var url = window.location.href;
+// 新建iframe
+var iframe = document.createElement('iframe');
+// 隐藏iframe并设置链接，把当前url带上
+iframe.style.display = 'none';
+iframe.src = 'http://api.demo.com/server.html?id=1&url=' + encodeURIComponent(url);
+
+var body = document.getElementByTagName('body')[0];
+body.appendChild(iframe);
+// 循环监听处理
+var listener = function(){
+	// 读取
+	var hash = location.hash;
+	// 还原
+	if(hash && hash !== '#'){
+		console.log(hash.replace('#', ''));
+		window.loacation.href = url + '#';
+	}
+	// 继续监听
+	setTimeout(listener, 100);
+};
+listener();
+```
+
+```html
+// 最简单返回html
+<!DOCTYPE html>
+<html>
+	<script>
+	function init(){
+		// 剪裁出父页面的url
+		var parentUrl = '';
+		var url = window.location.href;
+		var str = url.split('?')[1].replace('?', '');
+		strs = str.split("&");
+		for(var i = 0; i < strs.length; i ++) {
+			if(strs.split("=")[0] === 'url'){
+				parentUrl = strs.split("=")[1];
+			}
+		}
+		// 设置到父页面上
+		window.parent.location = decodeURIComponent(parentUrl) + '#helloworld';
+	}
+	</script>
+	<body onload="init();"></body>
+</html>
+```
+
+**总结**  
+
+优点：  
+
+-   可以发送任意类型的请求；
+-   不需要设置子域名。
+
+缺点：  
+
+-   iframe对浏览器性能影响较大；
+-   需要特殊接口支持，不能基于REST的API规范；
+-   循环检查哈希需要消耗性能；
+-   数据长度受URL2083字符限制。
+
 [1]: https://nimokuri.github.io/myBlog-backup/assets/【Geek议题】当年那些风骚的跨域操作/1.png
 
 [2]: https://nimokuri.github.io/myBlog-backup/assets/【Geek议题】当年那些风骚的跨域操作/2.png
 
-[2]: https://nimokuri.github.io/myBlog-backup/assets/【Geek议题】当年那些风骚的跨域操作/3.png
+[3]: https://nimokuri.github.io/myBlog-backup/assets/【Geek议题】当年那些风骚的跨域操作/3.png
+
+[4]: https://nimokuri.github.io/myBlog-backup/assets/【Geek议题】当年那些风骚的跨域操作/4.png
+
+[5]: https://nimokuri.github.io/myBlog-backup/assets/【Geek议题】当年那些风骚的跨域操作/5.png
