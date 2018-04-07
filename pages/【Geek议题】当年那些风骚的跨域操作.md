@@ -236,7 +236,7 @@ document.body.removeChild(frame);
 -   无法使用非协议默认端口的API；
 -   需要特殊接口支持，不能基于REST的API规范。
 
-## window.name
+### window.name
 
 这方法利用了`window.name`的特性：一旦被赋值后，当窗口被重定向到一个新的URL时不会改变它的值。这一行为使得不同域的特定文档可以读取该属性值，因此可以绕过同源策略并使跨域消息通信成为可能。  
 
@@ -303,7 +303,7 @@ body.appendChild(iframe);
 -   每当你想要获取一条新的消息时都不得不发起两次网络请求，网络成本大；
 -   需要准备空白页，对它的访问是无意义的，影响流量统计。
 
-## window.hash
+### window.hash
 
 这个方法利用了location的特性：不同域的页面，可以写不可读。而只改变哈希部分（井号后面）不会导致页面跳转。也就是可以让父、子页面互相写对方的location的哈希部分，进行通讯。
 
@@ -379,7 +379,34 @@ listener();
 -   iframe对浏览器性能影响较大；
 -   需要特殊接口支持，不能基于REST的API规范；
 -   循环检查哈希需要消耗性能；
--   数据长度受URL2083字符限制。
+-   返回数据受浏览器URL最大长度2083字符限制。
+
+## 现代的标准
+
+W3C的标准化跨域方案，让现代浏览器跨域已经不是什么复杂的事。这部分网上资料已经很多，这里就只是简单介绍。  
+
+### CORS
+
+CORS是一个W3C标准，全称是"跨域资源共享"（Cross-origin resource sharing）。  
+它允许浏览器向跨源服务器，发出XMLHttpRequest请求，从而克服了AJAX只能同源使用的限制。  
+
+[CORS参考文档][6]  
+[跨域资源共享 CORS 详解][7]
+
+
+### postMessage
+
+H5的window.postMessage为浏览器带来了一个安全的。基于事件的消息api。  
+只要是window对象，基本都可以使用这个方法，也就是说window.name、window.hash这类风骚的操作都已成为降级方案。  
+
+[postMessage参考文档][8]  
+
+## 安全问题
+
+上述的各类非标准的骚操作，都算是对同源策略的破解办法，在方便开发者完成跨域目的的同时，各类恶意的攻击者也自然会利用这些方案为非作歹。  
+其中子域名代理的风险最低，因为需要服务器设置特定的子域名，也就是已经是两个源的协商结果，一般黑客是难以模拟的。  
+风险最高的要算JSON-P的方案，因为这是任何客户端都可随意使用的办法，CSRF攻击的核心也是利用了特定标签的跨域性发起请求，所以JSON-P最好用在无用户状态的低安全性API上。  
+
 
 [1]: https://nimokuri.github.io/myBlog-backup/assets/【Geek议题】当年那些风骚的跨域操作/1.png
 
@@ -390,3 +417,9 @@ listener();
 [4]: https://nimokuri.github.io/myBlog-backup/assets/【Geek议题】当年那些风骚的跨域操作/4.png
 
 [5]: https://nimokuri.github.io/myBlog-backup/assets/【Geek议题】当年那些风骚的跨域操作/5.png
+
+[6]: https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Access_control_CORS
+
+[7]: http://www.ruanyifeng.com/blog/2016/04/cors.html
+
+[8]: https://developer.mozilla.org/zh-CN/docs/Web/API/Window/postMessage
