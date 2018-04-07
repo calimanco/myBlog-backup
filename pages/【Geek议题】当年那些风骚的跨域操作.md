@@ -39,7 +39,7 @@
 
 ### JSON-P
 
-JSON-P是各类跨域方案中流行度较高的一个，现在在某些要兼容旧浏览器的环境下还会被使用，著名的jquery也封装其方法。请勿见名知义，名字中的P是padding“带填充”的意思，这个方法在通信过程中使用的并不是普通的json，而是**自带填充功能的JavaScript脚本**。  
+JSON-P是各类跨域方案中流行度较高的一个，现在在某些要兼容旧浏览器的环境下还会被使用，著名的jQuery也封装其方法。请勿见名知义，名字中的P是padding“带填充”的意思，这个方法在通信过程中使用的并不是普通的json，而是**自带填充功能的JavaScript脚本**。  
 如何理解“自带填充功能的JavaScript脚本”，看看下面的例子或许比较简单，如果一个js文件里这样写并被引入，则全局下就会有data对象，也就是说**利用js脚本的引入和解析可以用来传递数据**，如果把js脚本换成函数运行命令岂不是可以调用全局函数了。这就是JSON-P方法的核心思想，它填充的是全局函数的数据。  
 
 ```javascript
@@ -49,13 +49,15 @@ var data = {
 }
 ```
 
-> 【PS】`<script>`标签不受同源策略限制。
+> 【PS】`<script>`标签不受同源策略限制，但只能发起get请求。
 
-JSON-P原理及流程：
+**原理及流程**
 
 1.  先定义好回调函数，也就是引入的js脚本中要调用的函数；
 2.  新建`<script>`标签，将标签插入页面浏览器便会发起get请求；
-3.  服务器根据请求返回js脚本，其中就是调用了回调函数。
+3.  服务器根据请求返回js脚本，其中调用了回调函数。
+
+![jsonp流程图][1]
 
 ```javascript
 // 定义回调函数
@@ -70,19 +72,145 @@ script.src = "http://demo.com/animal.json?callback=getTheAnimal";
 document.getElementByTagName('head')[0].appendChild(script);
 ```
 
-![jsonp流程图][1]
+**总结**  
 
-到这里你可能会有以为，标签岂不只能是get请求？这就是JSON-P的缺点，无法发起除get之外的请求，限制于url的格式，数据量也不可能超过2083字符的限制。  
-其实这个方法就是兼容性好这一优点，缺点倒是蛮多的（只列举一些）：  
+优点：  
+
+-   简单，有现成的工具库（jQuery）支持；
+-   支持上古级别的浏览器（IE8-）。
+
+缺点：
 
 -   只能是GET方法；
--   受浏览器URL最大长度2083限制；
+-   受浏览器URL最大长度2083字符限制；
 -   无法调试，服务器错误无法检测到具体原因；
 -   有安全风险，CSRF的基础；
 -   只能是异步，无法同步阻塞；
--   需要特殊接口支持，很难用于基于REST的API。
+-   需要特殊接口支持，不能基于REST的API规范。
 
 ### 子域名代理
 
 这个方法实际上是利用浏览器允许iframe内的页面只要是跟父页面是同个一级域名下，就能被父页面修改和调用的特点。也许你会疑问，上面讲同源策略的表格中很明确二级域名不同也是算不同源，这岂不矛盾了？  
-这其实不矛盾，如果正常操作确实会被同源策略限制，但浏览器的`document.domain`允许网站将主机部分更改为原始值的后缀。这意味着，寄放在sub.example.com的页面可以将它的源设置为example.com，但是并不能将其设置为alt.example.com或google.com。  
+这其实不矛盾，如果正常操作确实会被同源策略限制，但浏览器的`document.domain`**允许网站将主机部分更改为原始值的后缀**。这意味着，寄放在sub.example.com的页面可以将它的源设置为example.com，但是并不能将其设置为alt.example.com或google.com。  
+
+> 【PS】这里有一个细节，父子页面均要设置`document.domain`才能被互相访问，单一一个是无法跨域的。`document.domain`的特点：只能设置一次；只能更改域名部分，不能修改端口号和协议；重置源的端口为协议默认端口。
+
+**原理及流程**
+
+1.  新建一个子域，比如api.demo.com（页面在主域名demo.com下）；  
+2.  子域下需要一个代理文件proxy.html，设置其`document.domain = 'demo.com'`，并可以包含发起ajax的工具；
+3.  所有API地址都是在api.demo.com；
+4.  把需要发请求的主域页面设置其`document.domain = 'demo.com'`；
+5.  新建iframe标签链接到代理页；
+6.  当iframe内的子页面就绪时，父页面就可以使用子页面发起ajax请求。
+
+![子域名代理流程图][2]
+
+```html
+// 最简单的代理文件proxy.html
+<!DOCTYPE html>
+<html>
+	<script>
+		document.domain = 'publisher.com';
+	</script>
+	<script src="jquery.min.js"></script>
+</html>
+```
+
+```javascript
+// 发起请求的函数
+function getProductData(id){
+	var iframe = document.createElement('iframe');
+	// 链接到代理页
+	iframe.src = 'http://api.demo.com/proxy.html';
+	// 代理页就绪时触发
+	iframe.onload = function(){
+		// 由于代理页已经和父页设置了相同的源，父的脚本可以调用代理页的ajax工具；
+    // 由于是在子页面发起，其请求地址就跟子页面同源了。
+		iframe.contentWindow.jQuery.ajax({
+			method: 'POST',
+			url: 'http://api.demo.com/products',
+			data: {
+				product: id,
+			},
+			success: function(){
+        document.body.removeChild(iframe);
+				/*...*/
+			}
+		})
+	}
+	document.getElementsByTagName('head')[0].appendChild(iframe);
+}
+```
+
+**总结**  
+
+优点：  
+
+-   可以发送任意类型的请求；
+-   可以使用基于REST的API规范。
+
+缺点：  
+
+-   不太适合第三方API，给第二方使用较麻烦；
+-   iframe对浏览器性能影响较大；
+-   无法使用非协议默认端口的API。
+
+### 模拟form表单
+
+form表单的target属性可以指定一个iframe，使主页面不跳转，而iframe内跳转，所以这个方法的核心就是**利用表单提交，并在iframe中获取数据**。  
+要访问iframe内外页面互访也是必须设置同源，这点与子域代理是相似的；而iframe内回调父页面，又与JSON-P相似，可以说是两个思路的合体版。  
+form表单提交后返回的是页面，所以与JSON-P不同的是，返回的是**包含了自带填充功能的JavaScript脚本的页面**，说起来有点绕，简单来说就是把JSON-P返回的脚本放到一个html页面里自运行。  
+相比子域代理的方法，它**不需要代理页**。  
+
+> 【PS】form表单提交的特点就是会导致整个页面跳转，返回数据是在新的页面上，这样自然不会产生跨域的问题。  
+
+**原理及流程**
+
+1.  新建一个子域，比如api.demo.com（页面在主域名demo.com下）；  
+2.  所有API地址都是在api.demo.com；
+3.  把需要发请求的主域页面设置其`document.domain = 'demo.com'`；
+4.  先定义好父页面上的回调函数；
+5.  新建iframe标签并指定名字；
+6.  新建表单form标签，指定target为刚才的iframe，并添加数据；
+7.  提交表单，iframe内跳转，其中自运行脚本调用了父页面的回调函数。
+
+![模拟form表单流程图][3]
+
+```javascript
+// 新建并隐藏iframe
+var frame = document.createElement('iframe');
+iframe.name = 'post-review';
+frame.style.display = 'none';
+
+// 新建表单
+var form = document.createElement('form');
+form.action = 'http://api.demo.com/products';
+form.method = 'POST';
+form.target = 'post-review';
+// 添加数据
+var score = document.createElement('input');
+score.name = 'score';
+score.value = '5';
+// 添加数据
+var message = document.createElement('input');
+message.name = 'message';
+message.value = 'hello world';
+// 把数据加到表单
+form.appendChild(score);
+form.appendChild(message);
+// 渲染iframe和表单
+document.body.appendChild(frame);
+document.body.appendChild(form);
+// 提交表单发起请求
+form.submit();
+// 完成清理元素
+document.body.removeChild(form);
+document.body.removeChild(frame);
+```
+
+[1]: https://nimokuri.github.io/myBlog-backup/assets/【Geek议题】当年那些风骚的跨域操作/1.png
+
+[2]: https://nimokuri.github.io/myBlog-backup/assets/【Geek议题】当年那些风骚的跨域操作/2.png
+
+[2]: https://nimokuri.github.io/myBlog-backup/assets/【Geek议题】当年那些风骚的跨域操作/3.png
