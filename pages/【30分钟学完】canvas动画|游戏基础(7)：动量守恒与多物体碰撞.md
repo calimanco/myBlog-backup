@@ -38,9 +38,9 @@ v1Final = (v0 - v1) + v0Final
 
 > 【PS】这里有个细节，碰撞时可能出现球已经重叠的情况，这个例子只是简单将末速度加给碰撞后的球，用以弹开他们，这是不严谨但有效的做法。  
 
-完整示例：[单轴碰撞][4]
+完整示例：[单轴碰撞][2]
 
-![单轴碰撞][2]
+![单轴碰撞图][3]
 
 ```javascript
 /**
@@ -90,7 +90,7 @@ window.onload = function () {
 
 现实情况很少会出现单轴碰撞，如果两个轴上都有速度，处理起来会比较麻烦，把速度分解出来再代入动量守恒公式，这里运用到上一篇中关于坐标旋转的知识。  
 
-![双轴碰撞][3]  
+![双轴碰撞][4]  
 
 基本思路：  
 
@@ -251,11 +251,11 @@ function checkCollision(ball0, ball1) {
 
 [1]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(7)：动量守恒与多物体碰撞/1.png
 
-[2]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(7)：动量守恒与多物体碰撞/2.png
+[2]: https://nimokuri.github.io/H5Learning-animationDemo/part10/02-billiard-2.html
 
-[3]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(7)：动量守恒与多物体碰撞/3.png
+[3]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(7)：动量守恒与多物体碰撞/2.png
 
-[4]: https://nimokuri.github.io/H5Learning-animationDemo/part10/02-billiard-2.html
+[4]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(7)：动量守恒与多物体碰撞/3.png
 
 [5]: https://nimokuri.github.io/H5Learning-animationDemo/part10/04-billiard-4.html
 
