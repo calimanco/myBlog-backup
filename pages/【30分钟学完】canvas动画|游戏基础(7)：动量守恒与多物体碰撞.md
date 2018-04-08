@@ -86,6 +86,9 @@ window.onload = function () {
 ## 双轴碰撞
 
 现实情况很少会出现单轴碰撞，如果两个轴上都有速度，处理起来会比较麻烦，把速度分解出来再代入动量守恒公式，这里运用到上一篇中关于坐标旋转的知识。  
+
+![双轴碰撞][3]  
+
 基本思路：  
 
 1.  使用旋转公式，旋转整个系统，将两物体的中心连线置为水平场景；
@@ -93,6 +96,9 @@ window.onload = function () {
 3.  使用动量守恒计算x轴上的碰撞后速度；
 4.  再旋转回来。
 
+
 [1]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(7)：动量守恒与多物体碰撞/1.png
 
 [2]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(7)：动量守恒与多物体碰撞/2.png
+
+[3]: https://nimokuri.github.io/myBlog-backup/assets/【30分钟学完】canvas动画|游戏基础(7)：动量守恒与多物体碰撞/3.png
